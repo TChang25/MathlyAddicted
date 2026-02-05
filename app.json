@@ -4,24 +4,50 @@
     "slug": "MathlyAddicted",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/transparentMathlyLogo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/transparentMathlyLogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zenmunist.MathlyAddicted",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/transparentMathlyLogo.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.zenmunist.MathlyAddicted"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/transparentMathlyLogo.png",
+          "color": "#ffffff"
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
+    ],
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/transparentMathlyLogo.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "36873c25-2ff3-41a1-bfce-cf656ee94546"
+      }
     }
   }
 }

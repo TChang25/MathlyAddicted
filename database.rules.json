@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "rooms": {
+      ".read": true,
+      ".indexOn": ["createdAt"],
+      "$room_id": {
+        ".read": "data.exists()",
+        ".write": "!data.exists() || (newData.exists() && data.child('hostId').val() === newData.child('hostId').val()) || (data.exists() && !newData.exists() && data.child('createdAt').val() < (now - 7200000))",
+        "settings": {
+          ".write": "data.parent().child('hostId').val() === newData.parent().child('hostId').val()",
+          ".validate": "newData.hasChildren(['operations', 'minNumber', 'maxNumber'])",
+          "minNumber": { ".validate": "newData.isNumber()" },
+          "maxNumber": { ".validate": "newData.isNumber()" }
+        },
+        "players": {
+          "$player_id": {
+            ".write": "!data.exists() || (data.exists() && newData.exists())",
+            ".validate": "newData.hasChildren(['nickname', 'score', 'status'])",
+            "nickname": {
+              ".validate": "newData.isString() && newData.val().length <= 12"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() >= data.val())"
+            },
+            "status": {
+               ".validate": "newData.isString() && (newData.val() === 'ready' || newData.val() === 'not_ready' || newData.val() === 'playing' || newData.val() === 'finished' || newData.val() === 'viewing_scores')"
+            }
+          }
+        }
+      }
+    }
+  }
+}
