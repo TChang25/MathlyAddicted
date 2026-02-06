@@ -8,6 +8,8 @@ import * as MultiplayerService from './MultiplayerService';
 import { containsProfanity } from './ProfanityFilter';
 import { Audio } from 'expo-av';
 import mobileAds, { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType, MaxAdContentRating } from 'react-native-google-mobile-ads';
+import { useIAP, ErrorCode, isUserCancelledError } from 'expo-iap';
+import Constants from 'expo-constants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('screen');
 const BORDER_WIDTH = 15;
@@ -16,8 +18,24 @@ const INNER_RADIUS = CORNER_RADIUS - BORDER_WIDTH;
 
 const operations = ['+', '-', '*', '/', '^2', 'root'];
 
-const adUnitIdBanner = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyy';
-const adUnitIdInterstitial = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzz';
+const IAP_PRODUCT_ID = Platform.select({
+  ios: 'com.mathlyaddicted.removeads',
+  android: 'com.mathlyaddicted.removeads',
+});
+
+const adUnitIdBanner = __DEV__
+  ? TestIds.BANNER
+  : Platform.select({
+      ios: 'ca-app-pub-6440220869221286/7486332956',
+      android: 'ca-app-pub-6440220869221286/2980983878',
+    });
+
+const adUnitIdInterstitial = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.select({
+      ios: 'ca-app-pub-6440220869221286/4828380029',
+      android: 'ca-app-pub-6440220869221286/9278760927',
+    });
 
 // Simple seeded random number generator (Lcg)
 const createSeededRNG = (seed) => {
@@ -327,7 +345,7 @@ const MainGame = ({
     }
   }, [combo, isSafetyMode]);
 
-  const handleExit = () => {
+    const handleExit = () => {
     Alert.alert("Exit Game", "Do you want to save your progress and exit, or quit without saving?", [
       { text: "Cancel", style: "cancel" },
       { text: "Quit (No Save)", onPress: () => { navigation.resetGame(); navigation.navigate("Menu"); }, style: 'destructive' },
@@ -458,7 +476,7 @@ const GameModes = ({
     <View style={styles.container}>
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.Content title="Operation Selection!" titleStyle={{ fontFamily: KID_FONT }} />
+        <Appbar.Content title="Operation Selection!" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
       </Appbar.Header>
 
       <View style={styles.tabContainer}>
@@ -596,7 +614,7 @@ const GameModes = ({
   );
 };
 
-const Leaderboard = ({ navigation }) => {
+const Leaderboard = ({ navigation, adsRemoved }) => {
   const [tab, setTab] = useState('Normal');
   const [selectedMode, setSelectedMode] = useState(null);
   const [highScores, setHighScores] = useState({});
@@ -691,8 +709,10 @@ const Leaderboard = ({ navigation }) => {
     <View style={styles.container}>
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.BackAction onPress={() => selectedMode ? setSelectedMode(null) : navigation.navigate("Menu")} />
-        <Appbar.Content title="Leaderboard" titleStyle={{ fontFamily: KID_FONT }} />
+        <View style={{ marginLeft: '10%', flexDirection: 'row', alignItems: 'center' }}>
+          <Appbar.BackAction size={32} onPress={() => selectedMode ? setSelectedMode(null) : navigation.navigate("Menu")} />
+        </View>
+        <Appbar.Content title="Leaderboard" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
       </Appbar.Header>
       {!selectedMode && (
         <View style={styles.tabContainer}>
@@ -721,15 +741,17 @@ const Leaderboard = ({ navigation }) => {
           </TouchableOpacity>
         )}
       </View>
-      <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-        <BannerAd
-          unitId={adUnitIdBanner}
-          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
-          }}
-        />
-      </View>
+      {!adsRemoved && (
+        <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+          <BannerAd
+            unitId={adUnitIdBanner}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              requestNonPersonalizedAdsOnly: true,
+            }}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -788,8 +810,10 @@ const MultiplayerMenu = ({ navigation, setNickname, nickname }) => {
     >
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.BackAction onPress={() => navigation.navigate("Menu")} />
-        <Appbar.Content title="Multiplayer" titleStyle={{ fontFamily: KID_FONT }} />
+        <View style={{ marginLeft: '10%', flexDirection: 'row', alignItems: 'center' }}>
+          <Appbar.BackAction size={32} onPress={() => navigation.navigate("Menu")} />
+        </View>
+        <Appbar.Content title="Multiplayer" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
       </Appbar.Header>
       <ScrollView 
         contentContainerStyle={[styles.gameBody, { paddingBottom: 40 }]}
@@ -822,6 +846,13 @@ const MultiplayerMenu = ({ navigation, setNickname, nickname }) => {
         </View>
         <TouchableOpacity style={styles.menuButton} onPress={handleJoinRoom}>
           <Text style={styles.menuButtonText}>JOIN ROOM</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuButton, { marginTop: 40, backgroundColor: 'grey' }]}
+          onPress={() => navigation.navigate("Menu")}
+        >
+          <Text style={styles.menuButtonText}>Back to Menu</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1140,6 +1171,16 @@ const MultiplayerLobby = ({ navigation, roomCode, playerId, isHost }) => {
         {!isHost && (
           <Text style={[styles.statusText, { marginTop: 20, textAlign: 'center' }]}>Only the host can modify match settings.</Text>
         )}
+
+        <TouchableOpacity
+          style={[styles.menuButton, { marginTop: 40 }]}
+          onPress={() => {
+            MultiplayerService.leaveRoom(roomCode, playerId, isHost);
+            navigation.navigate("Menu");
+          }}
+        >
+          <Text style={styles.menuButtonText}>Back to Menu</Text>
+        </TouchableOpacity>
       </ScrollView>
     );
   };
@@ -1153,10 +1194,12 @@ const MultiplayerLobby = ({ navigation, roomCode, playerId, isHost }) => {
     <View style={styles.container}>
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.BackAction onPress={() => {
-          MultiplayerService.leaveRoom(roomCode, playerId, isHost);
-          navigation.navigate("Menu");
-        }} />
+        <View style={{ marginLeft: '10%', flexDirection: 'row', alignItems: 'center' }}>
+          <Appbar.BackAction size={32} onPress={() => {
+            MultiplayerService.leaveRoom(roomCode, playerId, isHost);
+            navigation.navigate("Menu");
+          }} />
+        </View>
         <TouchableOpacity 
           style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }} 
           onPress={copyToClipboard}
@@ -1164,7 +1207,7 @@ const MultiplayerLobby = ({ navigation, roomCode, playerId, isHost }) => {
         >
           <Appbar.Content 
             title={`Room Code: ${roomCode}`} 
-            titleStyle={{ fontFamily: KID_FONT, fontSize: 18 }} 
+            titleStyle={{ fontFamily: KID_FONT, fontSize: 18, color: '#333' }} 
           />
           <Appbar.Action icon="content-copy" onPress={copyToClipboard} size={20} />
         </TouchableOpacity>
@@ -1188,6 +1231,16 @@ const MultiplayerLobby = ({ navigation, roomCode, playerId, isHost }) => {
       <View style={{ flex: 1 }}>
         {activeTab === 'Lobby' ? renderLobbyTab() : renderSettingsTab()}
       </View>
+
+      <TouchableOpacity
+        style={[styles.menuButton, { marginTop: 10, marginBottom: 20, alignSelf: 'center' }]}
+        onPress={() => {
+          MultiplayerService.leaveRoom(roomCode, playerId, isHost);
+          navigation.navigate("Menu");
+        }}
+      >
+        <Text style={styles.menuButtonText}>Back to Menu</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -1210,8 +1263,10 @@ const SettingsScreen = ({ navigation, isSafetyMode, setIsSafetyMode, totalPlayTi
     <View style={styles.container}>
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.BackAction onPress={() => navigation.navigate("Menu")} />
-        <Appbar.Content title="Settings" titleStyle={{ fontFamily: KID_FONT }} />
+        <View style={{ marginLeft: '10%', flexDirection: 'row', alignItems: 'center' }}>
+          <Appbar.BackAction size={32} onPress={() => navigation.navigate("Menu")} />
+        </View>
+        <Appbar.Content title="Settings" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
       </Appbar.Header>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.gameBody}>
@@ -1241,23 +1296,70 @@ const SettingsScreen = ({ navigation, isSafetyMode, setIsSafetyMode, totalPlayTi
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.menuButton, { marginTop: 40 }]}
-            onPress={() => navigation.navigate("Menu")}
-          >
-            <Text style={styles.menuButtonText}>Back to Menu</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <Text style={[styles.sectionHeader, { marginTop: 20 }]}>App Info</Text>
+          <View style={[styles.zenModeContainer, { height: 'auto', paddingVertical: 15 }]}>
+            <Text style={styles.zenModeText}>Version</Text>
+            <Text style={[styles.zenModeText, { color: '#666' }]}>{Constants.expoConfig?.version || '1.0.0'}</Text>
+          </View>
+
+        <TouchableOpacity
+          style={[styles.menuButton, { marginTop: 40, backgroundColor: 'grey' }]}
+          onPress={() => navigation.navigate("Menu")}
+        >
+          <Text style={styles.menuButtonText}>Back to Menu</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
     </View>
   );
 };
 
-const MainMenu = ({ navigation, currentStreak }) => {
+const MainMenu = ({ navigation, currentStreak, adsRemoved, requestPurchase, restorePurchases }) => {
+  const handleRemoveAds = () => {
+    Alert.alert(
+      "Remove Ads",
+      "Remove all ads forever for $0.99?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Buy ($0.99)", 
+          onPress: () => requestPurchase()
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <MathBackground />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
+        <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+          {!adsRemoved && (
+            <TouchableOpacity 
+              onPress={handleRemoveAds}
+              style={{ 
+                backgroundColor: 'rgba(255, 215, 0, 0.8)', 
+                paddingHorizontal: 12, 
+                paddingVertical: 6, 
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#DAA520',
+                marginBottom: 5
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#8B4513', fontFamily: KID_FONT }}>
+                REMOVE ADS ($0.99)
+              </Text>
+            </TouchableOpacity>
+          )}
+          {!adsRemoved && (
+            <TouchableOpacity onPress={() => restorePurchases()}>
+              <Text style={{ fontSize: 10, color: '#666', fontFamily: KID_FONT, textAlign: 'center' }}>
+                Restore
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Appbar.Content title="" />
         {currentStreak > 0 && (
           <View style={styles.streakContainer}>
@@ -1290,9 +1392,6 @@ const MainMenu = ({ navigation, currentStreak }) => {
         <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate("Settings")}>
           <Text style={styles.menuButtonText}>SETTINGS</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton} onPress={() => BackHandler.exitApp()}>
-          <Text style={styles.menuButtonText}>QUIT</Text>
-        </TouchableOpacity>
       </View>
       <View style={{ position: 'absolute', bottom: 0, width: '100%', alignItems: 'center' }}>
         <BannerAd
@@ -1311,10 +1410,12 @@ const generateOptions = (answer, rng = Math.random) => {
   return [answer - 1, answer, answer + 1].sort(() => rng() - 0.5);
 };
 
-const GameOver = ({ score, stats, navigation }) => {
+const GameOver = ({ score, stats, navigation, adsRemoved }) => {
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
 
   useEffect(() => {
+    if (adsRemoved) return;
+
     const interstitial = InterstitialAd.createForAdRequest(adUnitIdInterstitial, {
       requestNonPersonalizedAdsOnly: true,
     });
@@ -1329,7 +1430,7 @@ const GameOver = ({ score, stats, navigation }) => {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [adsRemoved]);
 
   const summary = useMemo(() => {
     const safeStats = stats || [];
@@ -1351,7 +1452,7 @@ const GameOver = ({ score, stats, navigation }) => {
     <View style={styles.container}>
       <MathBackground operatorColor="rgba(255, 120, 120, 1)" count={40} />
       <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-        <Appbar.Content title="Game Over" titleStyle={{ fontFamily: KID_FONT }} />
+        <Appbar.Content title="Game Over" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
       </Appbar.Header>
       <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
         <View style={styles.titleContainer}>
@@ -1408,17 +1509,7 @@ const GameOver = ({ score, stats, navigation }) => {
         )}
 
         <TouchableOpacity
-          style={[styles.menuButton, { marginTop: 30 }]}
-          onPress={() => {
-            navigation.resetGame();
-            navigation.navigate("Game");
-          }}
-        >
-          <Text style={styles.menuButtonText}>PLAY AGAIN</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.menuButton, { backgroundColor: '#666' }]}
+          style={[styles.menuButton, { backgroundColor: 'grey' }]}
           onPress={() => {
             navigation.resetGame();
             navigation.navigate("Menu");
@@ -1451,6 +1542,68 @@ Notifications.setNotificationHandler({
 export default function App() {
   const dingSound = useRef(null);
   const quackSound = useRef(null);
+
+  const { connected, availablePurchases, fetchProducts, requestPurchase: requestPurchaseIAP, finishTransaction, getAvailablePurchases } = useIAP({
+    onPurchaseSuccess: async (purchase) => {
+      try {
+        await finishTransaction({ purchase, isConsumable: false });
+        setAdsRemoved(true);
+        Alert.alert("Success", "Ads have been removed! Thank you.");
+      } catch (err) {
+        console.warn('Finish Transaction Error:', err);
+      }
+    },
+    onPurchaseError: (error) => {
+      console.warn('Purchase Error', error);
+      if (error.code !== ErrorCode.UserCancelled) {
+        Alert.alert('Purchase Error', error.message || 'Transaction failed');
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (connected) {
+      fetchProducts({ skus: [IAP_PRODUCT_ID], type: 'in-app' });
+      restorePurchases(true);
+    }
+  }, [connected]);
+
+  const requestPurchase = async () => {
+    try {
+      await requestPurchaseIAP({
+        request: {
+          apple: { sku: IAP_PRODUCT_ID },
+          google: { skus: [IAP_PRODUCT_ID] },
+        },
+      });
+    } catch (err) {
+      console.warn('Purchase Request Error', err);
+      Alert.alert('Purchase Error', 'Could not initiate purchase');
+    }
+  };
+
+  const restorePurchases = async (silent = false) => {
+    try {
+      await getAvailablePurchases();
+      // Note: availablePurchases is a state variable updated by getAvailablePurchases()
+      // Since availablePurchases might not be updated immediately in this tick, 
+      // we might need a separate useEffect to handle the results if we want it to be perfectly reactive to the restore button.
+      // However, for the initial check on mount, it's safer to use the state in a useEffect.
+    } catch (err) {
+      console.warn('Restore Error', err);
+      if (!silent) Alert.alert("Error", "Could not restore purchases.");
+    }
+  };
+
+  useEffect(() => {
+    if (availablePurchases && availablePurchases.length > 0) {
+      const restored = availablePurchases.some(p => p.productId === IAP_PRODUCT_ID);
+      if (restored) {
+        setAdsRemoved(true);
+        // We don't want to show "Restored" alert every time on mount if it was silent
+      }
+    }
+  }, [availablePurchases]);
 
   useEffect(() => {
     // This listener fires whenever a notification is received while the app is foregrounded
@@ -1580,6 +1733,7 @@ export default function App() {
   const [allowZero, setAllowZero] = useState(false);
   const [allowNegative, setAllowNegative] = useState(false);
   const [savedGames, setSavedGames] = useState({});
+  const [adsRemoved, setAdsRemoved] = useState(false);
 
   // Multiplayer State
   const [nickname, setNickname] = useState('');
@@ -1608,6 +1762,7 @@ export default function App() {
           setCurrentStreak(stats.currentStreak || 0);
           setProblemsSolvedToday(stats.problemsSolvedToday || 0);
           setLastDateSolved(stats.lastDateSolved || null);
+          setAdsRemoved(!!stats.adsRemoved);
 
           // Check if streak should reset
           const today = new Date().toISOString().split('T')[0];
@@ -1645,7 +1800,7 @@ export default function App() {
   // Save local stats whenever they change
   useEffect(() => {
     const saveLocalStats = async () => {
-      const stats = { totalPlayTime, playTimeToday, currentStreak, problemsSolvedToday, lastDateSolved };
+      const stats = { totalPlayTime, playTimeToday, currentStreak, problemsSolvedToday, lastDateSolved, adsRemoved };
       try {
         await AsyncStorage.setItem('local_stats', JSON.stringify(stats));
       } catch (e) {
@@ -1653,7 +1808,7 @@ export default function App() {
       }
     };
     saveLocalStats();
-  }, [totalPlayTime, playTimeToday, currentStreak, problemsSolvedToday, lastDateSolved]);
+  }, [totalPlayTime, playTimeToday, currentStreak, problemsSolvedToday, lastDateSolved, adsRemoved]);
 
   // Track active play time
   useEffect(() => {
@@ -2300,6 +2455,9 @@ export default function App() {
           <MainMenu
             navigation={navigation}
             currentStreak={currentStreak}
+            adsRemoved={adsRemoved}
+            requestPurchase={requestPurchase}
+            restorePurchases={restorePurchases}
           />
         )}
         {screen === "MultiplayerMenu" && (
@@ -2324,9 +2482,16 @@ export default function App() {
              <View style={[StyleSheet.absoluteFill, { padding: BORDER_WIDTH }]} pointerEvents="box-none">
               <View style={{ flex: 1, borderRadius: INNER_RADIUS, backgroundColor: '#f0f0f0', overflow: 'hidden' }}>
                 <MathBackground count={Math.min(combo, 30)} />
+          <Appbar.Header style={{ width: '100%', backgroundColor: 'transparent' }}>
+            <Appbar.Content title="" />
+            <View style={styles.highScoreContainer}>
+              <Text style={styles.highScoreText}>Best: {highScore}</Text>
+            </View>
+            <Appbar.Action icon="exit-to-app" size={32} onPress={handleExit} />
+          </Appbar.Header>
                 <Appbar.Header style={{ width: '100%', backgroundColor: 'transparent' }}>
-                  <Appbar.Content title={`Room: ${roomCode}`} titleStyle={{ fontSize: 14 }} />
-                  <Appbar.Action icon="exit-to-app" onPress={() => {
+                  <Appbar.Content title={`Room: ${roomCode}`} titleStyle={{ fontSize: 14, color: '#333' }} />
+                  <Appbar.Action icon="exit-to-app" size={32} onPress={() => {
                     MultiplayerService.leaveRoom(roomCode, playerId, isHost);
                     setScreen("Menu");
                   }} />
@@ -2382,8 +2547,8 @@ export default function App() {
           <View style={styles.container}>
             <MathBackground />
             <Appbar.Header style={{ backgroundColor: 'transparent' }}>
-               <Appbar.Content title="Round Results" titleStyle={{ fontFamily: KID_FONT }} />
-               <Appbar.Action icon="exit-to-app" onPress={() => {
+               <Appbar.Content title="Round Results" titleStyle={{ fontFamily: KID_FONT, color: '#333' }} />
+               <Appbar.Action icon="exit-to-app" size={32} onPress={() => {
                   MultiplayerService.leaveRoom(roomCode, playerId, isHost);
                   setScreen("Menu");
                 }} />
@@ -2447,6 +2612,7 @@ export default function App() {
         {screen === "Leaderboard" && (
           <Leaderboard
             navigation={navigation}
+            adsRemoved={adsRemoved}
           />
         )}
         {screen === "GameOver" && (
@@ -2454,6 +2620,7 @@ export default function App() {
             score={score}
             stats={gameStats}
             navigation={navigation}
+            adsRemoved={adsRemoved}
           />
         )}
         {screen === "Game" && (
@@ -2680,6 +2847,7 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     paddingVertical: 15,
+    justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
@@ -2762,7 +2930,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#ddd',
-    color: '#000',
+    color: '#333',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

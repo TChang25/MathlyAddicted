@@ -1,0 +1,19 @@
+- Compete in real-time with friends using private 8-character room codes.
+- Track your ranking live during matches with dynamic position badges.
+- Ensure fair competition with shared game seeds that synchronize questions for all players.
+- Utilize host controls to manage participants and customize match settings.
+- Challenge yourself in Arcade mode with a high-stakes combo and strike system.
+- Practice at your own pace without timers or strikes in the new Zen Mode.
+- Master a wide range of operations including Addition, Subtraction, Multiplication, Division, Squaring, and Square Roots.
+- Customize your difficulty with adjustable number ranges and toggles for zero or negative numbers.
+- Maintain a daily streak by solving at least five problems every 24 hours.
+- Stay on track with local notifications that warn you when your streak is about to expire.
+- Monitor your performance with detailed stats including total playtime, average solve speed, and fastest/slowest records.
+- Review and learn from your mistakes using the post-game analysis dashboard.
+- Compete for a spot on the local top 10 leaderboards for every operation mode.
+- Enable Safety Mode to reduce motion and disable flashing lights for a more comfortable experience.
+- Enjoy an immersive "Mathly" aesthetic with chalkboard-style fonts and drifting operator backgrounds.
+- Experience dynamic visual feedback including a rainbow border effect for high-tier combos.
+- Listen for satisfying auditory cues with dedicated sounds for correct and incorrect answers.
+- Benefit from saved game support that allows you to resume your progress at any time.
+- Integrated Google Mobile Ads support to ensure sustainable future development.

@@ -13,17 +13,25 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.zenmunist.MathlyAddicted",
+      "bundleIdentifier": "com.millionyearscultivation.MathlyAddicted",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.zenmunist.MathlyAddicted",
+      "enableProguardInReleaseBuilds": true,
+      "permissions": [
+        "com.android.vending.BILLING"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/transparentMathlyLogo.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.zenmunist.MathlyAddicted"
+      }
     },
     "plugins": [
       [
@@ -36,8 +44,19 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+          "androidAppId": "ca-app-pub-6440220869221286~7810530924",
+          "iosAppId": "ca-app-pub-6440220869221286~1136547029"
+        }
+      ],
+      "expo-iap",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.0",
+            "extraMavenRepos": [],
+            "enableShrinkResourcesInReleaseBuilds": false
+          }
         }
       ]
     ],
